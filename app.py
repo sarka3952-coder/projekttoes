@@ -56,7 +56,7 @@ def ai_comment():
     }
     
     payload = {
-        "model": "llama3.2:1b", # nebo jiný model, který na serveru běží
+        "model": "gemma3:27b", # nebo jiný model, který na serveru běží
         "messages": [
             {"role": "system", "content": "Jsi vtipný zoolog."},
             {"role": "user", "content": f"Hráč získal {score}/10 v těžkém kvízu o zvířatech. Napiš mu jednu velmi krátkou vtipnou větu v češtině jako hodnocení."}
