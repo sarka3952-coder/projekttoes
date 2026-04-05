@@ -7,6 +7,3 @@ services:
     environment:
       - OLLAMA_API_URL=http://host.docker.internal:11434/api/generate
       - APP_PORT=8081
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: always
