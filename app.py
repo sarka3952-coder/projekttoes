@@ -4,12 +4,14 @@ import random
 import requests
 from flask import Flask, jsonify, request, render_template
 
+
+api_key = os.environ.get("OPENAI_API_KEY")
+base_url = os.environ.get("OPENAI_BASE_URL","https://kurim.ithope.eu/v1")
+redis_host = os.environ.get("REDIS_HOST", "cache")
+
+
 app = Flask(__name__)
 
-# Konfigurace API (dodané údaje)
-OPENAI_API_KEY = "sk-1k-KaViFjOIdiPvXYwBAQA"
-OPENAI_BASE_URL = "https://kurim.ithope.eu/v1/chat/completions"
-MY_PORT = int(os.getenv("APP_PORT", 8081))
 
 leaderboard = []
 
