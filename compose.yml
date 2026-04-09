@@ -5,5 +5,4 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - OLLAMA_API_URL=http://host.docker.internal:11434/api/generate
       - APP_PORT=8081
