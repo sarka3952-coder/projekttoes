@@ -3,19 +3,20 @@ import datetime
 import random
 import requests
 import urllib3
-from flask import Flask, request, jsonify, render_template, load_dotenv
+from flask import Flask, request, jsonify, render_template
 
-# --- KONFIGURACE (Přesně podle tvého vzoru) ---
+# --- 1. ZÁKLADNÍ NASTAVENÍ ---
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-# load_dotenv() # Odkomentuj, pokud používáš .env soubor
 
+# Inicializace Flasku musí být TADY nahoře, před definicí cest (route)
+app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123")
 
-# --- PROMĚNNÉ PROSTŘEDÍ ---
-# Tyto proměnné zajistí, že se aplikace spojí s AI serverem v Kuřimi
+# --- 2. PROMĚNNÉ PROSTŘEDÍ ---
 api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
 
-# --- DATA KVÍZU (Logika kamarádky) ---
+# --- 3. DATA KVÍZU ---
 ALL_QUESTIONS = [
     {"id": 1, "q": "Kolik srdcí má chobotnice?", "opts": ["Jedno", "Dvě", "Tři", "Čtyři"], "ans": 2},
     {"id": 2, "q": "Který savec má nejhustší srst?", "opts": ["Lední medvěd", "Vydra mořská", "Činčila", "Bobr"], "ans": 1},
@@ -31,41 +32,40 @@ ALL_QUESTIONS = [
     {"id": 12, "q": "Které zvíře neumí skákat?", "opts": ["Slon", "Hroch", "Nosorožec", "Všechna uvedená"], "ans": 0}
 ]
 
-# --- ROUTY ---
+# --- 4. ROUTY ---
 
 @app.route('/')
 def index():
-    # Vybere 10 náhodných otázek pro hru
-    random_questions = random.sample(ALL_QUESTIONS, 10)
-    # Zobrazí index.html (rozhraní tvé aplikace)
-    return render_template('index.html', questions=random_questions)
+    try:
+        # Vybere 10 náhodných otázek
+        random_questions = random.sample(ALL_QUESTIONS, 10)
+        return render_template('index.html', questions=random_questions)
+    except Exception as e:
+        return f"Chyba: Ujisti se, že index.html je ve složce templates. Info: {str(e)}", 500
 
 @app.route('/submit', methods=['POST'])
 def submit_score():
-    data = request.json
+    data = request.json or {}
     user = data.get("user", "Anonym")
-    score = int(data.get("score", 0))
+    score = data.get("score", 0)
     return jsonify({"status": "success", "user": user, "score": score})
 
-# --- AI LOGIKA (Implementace tvého ai_advisor stylu) ---
 @app.route('/ai', methods=['POST'])
 def ai_comment():
-    data = request.json
+    data = request.json or {}
     score = data.get("score", 0)
     
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    
     payload = {
         "model": "gemma3:27b", 
         "messages": [
             {"role": "system", "content": "Jsi vtipný zoolog."},
-            {"role": "user", "content": f"Hráč získal {score}/10 v kvízu o zvířatech. Napiš mu jednu velmi krátkou vtipnou větu v češtině jako hodnocení."}
+            {"role": "user", "content": f"Hráč získal {score}/10 v kvízu o zvířatech. Napiš mu jednu velmi krátkou vtipnou větu v češtině."}
         ], 
         "stream": False
     }
 
     try:
-        # Tvá metoda čištění URL
         clean_url = f"{base_url.rstrip('/')}/chat/completions"
         res = requests.post(clean_url, headers=headers, json=payload, timeout=20, verify=False)
         
@@ -73,13 +73,12 @@ def ai_comment():
             msg = res.json()['choices'][0]['message']['content']
             return jsonify({"ai_comment": msg})
         
-        return jsonify({"error": f"Chyba LLM: {res.status_code}"}), 500
+        return jsonify({"ai_comment": "Zoolog má pauzu na krmení."}), 200 # Vrátíme 200 i při chybě AI, aby JS nespadl
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"ai_comment": "Zoolog utekl před lvy."}), 200
 
 @app.route('/status')
 def status():
-    # Jednoduchý status pro kontrolu běhu na tvé subdoméně
     return jsonify({
         "app": "Zvířecí Kvíz",
         "url": "https://sarka-kasikova.kurim.ithope.eu/",
@@ -87,7 +86,7 @@ def status():
         "timestamp": datetime.datetime.now().isoformat()
     })
 
+# --- 5. SPUŠTĚNÍ ---
 if __name__ == '__main__':
-    # Spuštění na portu, který definuje tvé prostředí (standardně 5000)
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
