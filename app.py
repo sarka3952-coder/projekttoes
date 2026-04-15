@@ -5,14 +5,15 @@ import requests
 import urllib3
 from flask import Flask, request, jsonify, render_template, load_dotenv
 
-# --- KONFIGURACE (Tvůj styl) ---
+# --- KONFIGURACE (Přesně podle tvého vzoru) ---
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-# load_dotenv() # Pokud používáš .env soubor, odkomentuj toto
+# load_dotenv() # Odkomentuj, pokud používáš .env soubor
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123")
 
-# --- PROMĚNNÉ PROSTŘEDÍ (Tvé proměnné) ---
+# --- PROMĚNNÉ PROSTŘEDÍ ---
+# Tyto proměnné zajistí, že se aplikace spojí s AI serverem v Kuřimi
 api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
 
@@ -36,8 +37,9 @@ ALL_QUESTIONS = [
 
 @app.route('/')
 def index():
-    # Vybere 10 náhodných otázek
+    # Vybere 10 náhodných otázek pro hru
     random_questions = random.sample(ALL_QUESTIONS, 10)
+    # Zobrazí index.html (rozhraní tvé aplikace)
     return render_template('index.html', questions=random_questions)
 
 @app.route('/submit', methods=['POST'])
@@ -45,10 +47,9 @@ def submit_score():
     data = request.json
     user = data.get("user", "Anonym")
     score = int(data.get("score", 0))
-    # Bez databáze jen vrátíme úspěch
     return jsonify({"status": "success", "user": user, "score": score})
 
-# --- AI LOGIKA (Přesně podle tvé funkce ai_advisor) ---
+# --- AI LOGIKA (Implementace tvého ai_advisor stylu) ---
 @app.route('/ai', methods=['POST'])
 def ai_comment():
     data = request.json
@@ -60,13 +61,13 @@ def ai_comment():
         "model": "gemma3:27b", 
         "messages": [
             {"role": "system", "content": "Jsi vtipný zoolog."},
-            {"role": "user", "content": f"Hráč získal {score}/10 v kvízu o zvířatech. Napiš mu jednu velmi krátkou vtipnou větu v češtině."}
+            {"role": "user", "content": f"Hráč získal {score}/10 v kvízu o zvířatech. Napiš mu jednu velmi krátkou vtipnou větu v češtině jako hodnocení."}
         ], 
         "stream": False
     }
 
     try:
-        # Tvoje ošetření URL
+        # Tvá metoda čištění URL
         clean_url = f"{base_url.rstrip('/')}/chat/completions"
         res = requests.post(clean_url, headers=headers, json=payload, timeout=20, verify=False)
         
@@ -80,12 +81,15 @@ def ai_comment():
 
 @app.route('/status')
 def status():
+    # Jednoduchý status pro kontrolu běhu na tvé subdoméně
     return jsonify({
-        "status": "running",
-        "cas": datetime.datetime.now().isoformat()
+        "app": "Zvířecí Kvíz",
+        "url": "https://sarka-kasikova.kurim.ithope.eu/",
+        "status": "online",
+        "timestamp": datetime.datetime.now().isoformat()
     })
 
 if __name__ == '__main__':
-    # Tvůj dynamický port
+    # Spuštění na portu, který definuje tvé prostředí (standardně 5000)
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
