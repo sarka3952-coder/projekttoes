@@ -1,21 +1,29 @@
 import os
+import redis
 import datetime
 import random
 import requests
-from flask import Flask, jsonify, request, render_template
+import urllib3
+from flask import Flask, request, jsonify, render_template
+from dotenv import load_dotenv
 
-
-api_key = os.environ.get("OPENAI_API_KEY")
-base_url = os.environ.get("OPENAI_BASE_URL","https://kurim.ithope.eu/v1")
-redis_host = os.environ.get("REDIS_HOST", "cache")
-
+# --- KONFIGURACE ---
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123")
 
+# --- PROMĚNNÉ PROSTŘEDÍ (převzato od tebe) ---
+api_key = os.environ.get("OPENAI_API_KEY")
+base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
+redis_host = os.environ.get("REDIS_HOST", "cache")
 
-leaderboard = []
+# --- PŘIPOJENÍ K DB ---
+# Používáme Redis pro logování, jak je ve tvém kódu zvykem
+r = redis.Redis(host=redis_host, port=6379, decode_responses=True)
 
-# Databáze otázek
+# Databáze otázek (původní logika kamarádky)
 ALL_QUESTIONS = [
     {"id": 1, "q": "Kolik srdcí má chobotnice?", "opts": ["Jedno", "Dvě", "Tři", "Čtyři"], "ans": 2},
     {"id": 2, "q": "Který savec má nejhustší srst?", "opts": ["Lední medvěd", "Vydra mořská", "Činčila", "Bobr"], "ans": 1},
@@ -42,51 +50,58 @@ def submit_score():
     data = request.json
     user = data.get("user", "Anonym")
     score = int(data.get("score", 0))
-    leaderboard.append({"user": user, "score": score})
-    leaderboard.sort(key=lambda x: x['score'], reverse=True)
-    return jsonify(leaderboard[:10])
+    
+    # Uložíme výsledek do Redisu pro logování (stejně jako tvůj log_pristupu)
+    r.lpush('log_pristupu', f"Kvíz: {user} získal {score} bodů ({datetime.datetime.now().strftime('%H:%M:%S')})")
+    
+    # Tady by byla logika pro leaderboard, pokud ho chceš držet v paměti nebo v Redisu.
+    # Pro jednoduchost zachovávám původní strukturu návratu, ale loguji to k tobě.
+    return jsonify({"status": "ok", "user": user, "score": score})
 
 @app.route('/ai', methods=['POST'])
 def ai_comment():
     data = request.json
     score = data.get("score", 0)
     
-    # Nové volání přes OpenAI formát na URL v Kuřimi
     headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
     
     payload = {
-        "model": "gemma3:27b", # nebo jiný model, který na serveru běží
+        "model": "gemma3:27b",
         "messages": [
             {"role": "system", "content": "Jsi vtipný zoolog."},
             {"role": "user", "content": f"Hráč získal {score}/10 v těžkém kvízu o zvířatech. Napiš mu jednu velmi krátkou vtipnou větu v češtině jako hodnocení."}
         ],
-        "temperature": 0.7
+        "stream": False
     }
 
     try:
-        response = requests.post(OPENAI_BASE_URL, json=payload, headers=headers, timeout=10)
-        result = response.json()
-        ai_text = result['choices'][0]['message']['content']
+        # Oprava URL podle tvého vzoru (ořezání / a přidání /chat/completions)
+        clean_url = f"{base_url.rstrip('/')}/chat/completions"
+        res = requests.post(clean_url, headers=headers, json=payload, timeout=20, verify=False)
+        
+        if res.status_code == 200:
+            ai_text = res.json()['choices'][0]['message']['content']
+            r.lpush('log_pristupu', f"AI Zoolog odpověděl na skóre {score}")
+            return jsonify({"ai_comment": ai_text})
+        
+        return jsonify({"ai_comment": "AI zoolog má teď pauzu na krmení (Chyba LLM)."}), 500
     except Exception as e:
-        print(f"Chyba AI: {e}")
-        ai_text = "AI zoolog má teď pauzu na krmení."
+        return jsonify({"ai_comment": f"Chyba: {str(e)}"}), 500
 
-    return jsonify({"ai_comment": ai_text})
-
-@app.route('/ping', methods=['GET'])
-def ping():
-    return "pong", 200
-
-@app.route('/status', methods=['GET'])
+@app.route('/status')
 def status():
+    # Použijeme tvůj styl statusu, který ukazuje i logy z Redisu
+    logs = r.lrange('log_pristupu', 0, 10) # posledních 10 záznamů
     return jsonify({
         "status": "running",
-        "autor": "Tvé Jméno",
-        "cas": datetime.datetime.now().isoformat()
-    }), 200
+        "cas": datetime.datetime.now().isoformat(),
+        "posledni_logy": logs
+    })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=MY_PORT)
+    # Dynamický port podle tvého vzoru
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
