@@ -3,7 +3,6 @@ import datetime
 import random
 import requests
 import urllib3
-import redis
 from flask import Flask, request, jsonify, render_template
 
 # --- 1. ZÁKLADNÍ NASTAVENÍ ---
@@ -12,17 +11,17 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123")
 
-# --- 2. PROMĚNNÉ PROSTŘEDÍ A REDIS ---
-api_key = os.environ.get("OPENAI_API_KEY")
-base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
-# V Kuřimi se hostitel Redisu obvykle jmenuje "cache"
-redis_host = os.environ.get("REDIS_HOST", "cache")
-
+# --- 2. VOLITELNÝ REDIS (S POJISTKOU) ---
+# Pokusíme se importovat redis. Pokud v systému není, aplikace nespadne.
 try:
-    r = redis.Redis(host=redis_host, port=6379, decode_responses=True, socket_timeout=2)
+    import redis
+    redis_host = os.environ.get("REDIS_HOST", "cache")
+    r = redis.Redis(host=redis_host, port=6379, decode_responses=True, socket_connect_timeout=1)
     r.ping()
-except:
+    print("Redis pripojen!")
+except (ImportError, Exception):
     r = None
+    print("Redis neni dostupny - jedeme v rezimu bez databaze.")
 
 # --- 3. DATA KVÍZU ---
 ALL_QUESTIONS = [
@@ -48,45 +47,53 @@ def index():
         random_questions = random.sample(ALL_QUESTIONS, 10)
         hall_of_fame = []
         if r:
-            # Získání Top 10 výsledků z Redisu
-            data = r.zrevrange("leaderboard", 0, 9, withscores=True)
-            hall_of_fame = [{"name": name, "score": int(score)} for name, score in data]
+            try:
+                data = r.zrevrange("leaderboard", 0, 9, withscores=True)
+                hall_of_fame = [{"name": name, "score": int(score)} for name, score in data]
+            except:
+                hall_of_fame = []
+        
         return render_template('index.html', questions=random_questions, leaderboard=hall_of_fame)
     except Exception as e:
-        return f"Chyba serveru: {str(e)}", 500
+        return f"Chyba: {str(e)}", 500
 
 @app.route('/submit', methods=['POST'])
 def submit_score():
-    data = request.json or {}
-    user = data.get("user", "Anonym").strip() or "Anonym"
-    score = int(data.get("score", 0))
     if r:
-        r.zadd("leaderboard", {user: score})
+        try:
+            data = request.json or {}
+            user = data.get("user", "Anonym").strip() or "Anonym"
+            score = int(data.get("score", 0))
+            r.zadd("leaderboard", {user: score})
+        except:
+            pass
     return jsonify({"status": "success"})
 
 @app.route('/ai', methods=['POST'])
 def ai_comment():
     data = request.json or {}
     score = data.get("score", 0)
-    user = data.get("user", "Anonym")
+    user = data.get("user", "Hráč")
     
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    api_key = os.environ.get("OPENAI_API_KEY")
+    base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
+
     payload = {
         "model": "gemma3:27b", 
         "messages": [
-            {"role": "system", "content": "Jsi vtipný zoolog. Krátce zhodnoť výsledek kvízu."},
-            {"role": "user", "content": f"Hráč {user} má {score}/10 bodů. Napiš jednu vtipnou větu v češtině."}
+            {"role": "system", "content": "Jsi vtipný zoolog."},
+            {"role": "user", "content": f"Hráč {user} získal {score}/10 v kvízu o zvířatech. Napiš jednu krátkou vtipnou větu v češtině."}
         ], 
         "stream": False
     }
 
     try:
         clean_url = f"{base_url.rstrip('/')}/chat/completions"
-        res = requests.post(clean_url, headers=headers, json=payload, timeout=10, verify=False)
-        msg = res.json()['choices'][0]['message']['content'] if res.status_code == 200 else "Máš štěstí, že zvířata neumí číst!"
+        res = requests.post(clean_url, headers={"Authorization": f"Bearer {api_key}"}, json=payload, timeout=8, verify=False)
+        msg = res.json()['choices'][0]['message']['content'] if res.status_code == 200 else "Zvířata tleskají!"
         return jsonify({"ai_comment": msg})
     except:
-        return jsonify({"ai_comment": "Zoolog šel krmit lvy, zkus to příště."})
+        return jsonify({"ai_comment": "Zoolog má polední pauzu."})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
