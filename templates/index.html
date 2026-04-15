@@ -17,8 +17,6 @@
         .btn { display: block; width: 100%; background: #27ae60; color: white; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; }
         #result { margin-top: 30px; padding: 25px; border-radius: 12px; display: none; background: #fff; border: 2px solid #27ae60; text-align: center; animation: fadeIn 0.5s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
-        /* Styl pro bublinu AI zoologa */
         .ai-bubble { background: #fdf6e3; border: 2px solid #eee; border-radius: 15px; padding: 20px; position: relative; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
     </style>
 </head>
@@ -32,9 +30,13 @@
     <div class="leaderboard-card">
         <h3>🏆 Síň slávy (Top 10)</h3>
         <table class="leaderboard-table">
-            {% for player in leaderboard %}
-            <tr><td><strong>{{ player.name }}</strong></td><td>{{ player.score }}/10</td></tr>
-            {% endfor %}
+            {% if leaderboard %}
+                {% for player in leaderboard %}
+                <tr><td><strong>{{ player.name }}</strong></td><td>{{ player.score }}/10</td></tr>
+                {% endfor %}
+            {% else %}
+                <tr><td>Zatím žádné výsledky</td><td>—</td></tr>
+            {% endif %}
         </table>
     </div>
 
@@ -59,13 +61,11 @@
 
     <div id="result">
         <h2 id="score-text"></h2>
-        
         <div class="ai-bubble">
             <div style="font-size: 2.5em; margin-bottom: 10px;">👨‍🔬</div>
             <div style="font-weight: bold; color: #27ae60;">AI Zoolog říká:</div>
             <div id="ai-comment">💬 Přemýšlím...</div>
         </div>
-
         <button onclick="location.reload()" class="btn" style="margin-top: 30px; background: #34495e;">Hrát znovu</button>
     </div>
 
@@ -86,19 +86,25 @@
             document.getElementById('score-text').innerText = `Skóre: ${score} z 10`;
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
+            // Uložit do databáze
             await fetch('/submit', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user: username, score: score })
             });
 
-            const aiRes = await fetch('/ai', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ score: score, user: username })
-            });
-            const aiData = await aiRes.json();
-            document.getElementById('ai-comment').innerText = aiData.ai_comment;
+            // Získat AI komentář
+            try {
+                const aiRes = await fetch('/ai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ score: score, user: username })
+                });
+                const aiData = await aiRes.json();
+                document.getElementById('ai-comment').innerText = aiData.ai_comment;
+            } catch (err) {
+                document.getElementById('ai-comment').innerText = "AI zoolog se zakoukal na žirafy.";
+            }
         };
     </script>
 </body>
