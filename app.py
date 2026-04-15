@@ -1,29 +1,22 @@
 import os
-import redis
 import datetime
 import random
 import requests
 import urllib3
-from flask import Flask, request, jsonify, render_template
-from dotenv import load_dotenv
+from flask import Flask, request, jsonify, render_template, load_dotenv
 
-# --- KONFIGURACE ---
+# --- KONFIGURACE (Tvůj styl) ---
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-load_dotenv()
+# load_dotenv() # Pokud používáš .env soubor, odkomentuj toto
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123")
 
-# --- PROMĚNNÉ PROSTŘEDÍ (převzato od tebe) ---
+# --- PROMĚNNÉ PROSTŘEDÍ (Tvé proměnné) ---
 api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
-redis_host = os.environ.get("REDIS_HOST", "cache")
 
-# --- PŘIPOJENÍ K DB ---
-# Používáme Redis pro logování, jak je ve tvém kódu zvykem
-r = redis.Redis(host=redis_host, port=6379, decode_responses=True)
-
-# Databáze otázek (původní logika kamarádky)
+# --- DATA KVÍZU (Logika kamarádky) ---
 ALL_QUESTIONS = [
     {"id": 1, "q": "Kolik srdcí má chobotnice?", "opts": ["Jedno", "Dvě", "Tři", "Čtyři"], "ans": 2},
     {"id": 2, "q": "Který savec má nejhustší srst?", "opts": ["Lední medvěd", "Vydra mořská", "Činčila", "Bobr"], "ans": 1},
@@ -39,9 +32,11 @@ ALL_QUESTIONS = [
     {"id": 12, "q": "Které zvíře neumí skákat?", "opts": ["Slon", "Hroch", "Nosorožec", "Všechna uvedená"], "ans": 0}
 ]
 
+# --- ROUTY ---
+
 @app.route('/')
 def index():
-    # Vybere 10 náhodných otázek pro každé načtení
+    # Vybere 10 náhodných otázek
     random_questions = random.sample(ALL_QUESTIONS, 10)
     return render_template('index.html', questions=random_questions)
 
@@ -50,58 +45,47 @@ def submit_score():
     data = request.json
     user = data.get("user", "Anonym")
     score = int(data.get("score", 0))
-    
-    # Uložíme výsledek do Redisu pro logování (stejně jako tvůj log_pristupu)
-    r.lpush('log_pristupu', f"Kvíz: {user} získal {score} bodů ({datetime.datetime.now().strftime('%H:%M:%S')})")
-    
-    # Tady by byla logika pro leaderboard, pokud ho chceš držet v paměti nebo v Redisu.
-    # Pro jednoduchost zachovávám původní strukturu návratu, ale loguji to k tobě.
-    return jsonify({"status": "ok", "user": user, "score": score})
+    # Bez databáze jen vrátíme úspěch
+    return jsonify({"status": "success", "user": user, "score": score})
 
+# --- AI LOGIKA (Přesně podle tvé funkce ai_advisor) ---
 @app.route('/ai', methods=['POST'])
 def ai_comment():
     data = request.json
     score = data.get("score", 0)
     
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     
     payload = {
-        "model": "gemma3:27b",
+        "model": "gemma3:27b", 
         "messages": [
             {"role": "system", "content": "Jsi vtipný zoolog."},
-            {"role": "user", "content": f"Hráč získal {score}/10 v těžkém kvízu o zvířatech. Napiš mu jednu velmi krátkou vtipnou větu v češtině jako hodnocení."}
-        ],
+            {"role": "user", "content": f"Hráč získal {score}/10 v kvízu o zvířatech. Napiš mu jednu velmi krátkou vtipnou větu v češtině."}
+        ], 
         "stream": False
     }
 
     try:
-        # Oprava URL podle tvého vzoru (ořezání / a přidání /chat/completions)
+        # Tvoje ošetření URL
         clean_url = f"{base_url.rstrip('/')}/chat/completions"
         res = requests.post(clean_url, headers=headers, json=payload, timeout=20, verify=False)
         
         if res.status_code == 200:
-            ai_text = res.json()['choices'][0]['message']['content']
-            r.lpush('log_pristupu', f"AI Zoolog odpověděl na skóre {score}")
-            return jsonify({"ai_comment": ai_text})
+            msg = res.json()['choices'][0]['message']['content']
+            return jsonify({"ai_comment": msg})
         
-        return jsonify({"ai_comment": "AI zoolog má teď pauzu na krmení (Chyba LLM)."}), 500
+        return jsonify({"error": f"Chyba LLM: {res.status_code}"}), 500
     except Exception as e:
-        return jsonify({"ai_comment": f"Chyba: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/status')
 def status():
-    # Použijeme tvůj styl statusu, který ukazuje i logy z Redisu
-    logs = r.lrange('log_pristupu', 0, 10) # posledních 10 záznamů
     return jsonify({
         "status": "running",
-        "cas": datetime.datetime.now().isoformat(),
-        "posledni_logy": logs
+        "cas": datetime.datetime.now().isoformat()
     })
 
 if __name__ == '__main__':
-    # Dynamický port podle tvého vzoru
+    # Tvůj dynamický port
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
