@@ -15,7 +15,7 @@ app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123")
 # --- 2. PROMĚNNÉ PROSTŘEDÍ A REDIS ---
 api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
-redis_host = os.environ.get("REDIS_HOST", "cache")
+redis_host = os.environ.get("REDIS_HOST", "localhost")
 
 try:
     r = redis.Redis(host=redis_host, port=6379, decode_responses=True)
