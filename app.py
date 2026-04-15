@@ -9,8 +9,6 @@ from flask import Flask, request, jsonify, render_template, load_dotenv
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # load_dotenv() # Odkomentuj, pokud používáš .env soubor
 
-app = Flask(__name__)
-app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123")
 
 # --- PROMĚNNÉ PROSTŘEDÍ ---
 # Tyto proměnné zajistí, že se aplikace spojí s AI serverem v Kuřimi
