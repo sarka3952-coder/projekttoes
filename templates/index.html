@@ -7,31 +7,19 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; background-color: #eef2f3; color: #333; }
         header { text-align: center; margin-bottom: 30px; padding: 20px; background: #2c3e50; color: white; border-radius: 10px; }
-        
-        /* Styl pro Síň slávy */
-        .leaderboard-card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-top: 5px solid #f1c40f; shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .leaderboard-table th, .leaderboard-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-        .leaderboard-table th { color: #2c3e50; text-transform: uppercase; font-size: 0.8em; }
-
-        .question-card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 5px solid #27ae60; }
-        .question-card h3 { margin-top: 0; color: #2c3e50; }
-        
-        /* Styl pro vstup jména */
+        .leaderboard-card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; border-top: 5px solid #f1c40f; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .leaderboard-table { width: 100%; border-collapse: collapse; }
+        .leaderboard-table td { padding: 10px; border-bottom: 1px solid #eee; }
         .name-section { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        input[type="text"] { width: 100%; padding: 12px; margin-top: 10px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        
-        .options { margin-top: 15px; }
-        .options label { display: block; margin-bottom: 10px; padding: 10px; background: #f9f9f9; border-radius: 6px; cursor: pointer; transition: 0.2s; border: 1px solid #ddd; }
-        .options label:hover { background: #d1f2eb; border-color: #1abc9c; }
-        .options input { margin-right: 10px; }
-        
-        .btn { display: block; width: 100%; background: #27ae60; color: white; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; transition: 0.3s; }
-        .btn:hover { background: #219150; transform: translateY(-2px); }
-        
+        input[type="text"] { width: 100%; padding: 12px; margin-top: 10px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .question-card { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 5px solid #27ae60; }
+        .options label { display: block; margin-bottom: 10px; padding: 10px; background: #f9f9f9; border-radius: 6px; cursor: pointer; border: 1px solid #ddd; }
+        .btn { display: block; width: 100%; background: #27ae60; color: white; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; }
         #result { margin-top: 30px; padding: 25px; border-radius: 12px; display: none; background: #fff; border: 2px solid #27ae60; text-align: center; animation: fadeIn 0.5s; }
-        #ai-comment { font-style: italic; color: #16a085; margin-top: 15px; font-size: 1.2em; border-top: 1px solid #eee; padding-top: 15px; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Styl pro bublinu AI zoologa */
+        .ai-bubble { background: #fdf6e3; border: 2px solid #eee; border-radius: 15px; padding: 20px; position: relative; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
@@ -44,21 +32,74 @@
     <div class="leaderboard-card">
         <h3>🏆 Síň slávy (Top 10)</h3>
         <table class="leaderboard-table">
-            <thead>
-                <tr>
-                    <th>Hráč</th>
-                    <th>Skóre</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for player in leaderboard %}
-                <tr>
-                    <td><strong>{{ player.name }}</strong></td>
-                    <td>{{ player.score }}/10</td>
-                </tr>
-                {% endfor %}
-            </tbody>
+            {% for player in leaderboard %}
+            <tr><td><strong>{{ player.name }}</strong></td><td>{{ player.score }}/10</td></tr>
+            {% endfor %}
         </table>
     </div>
 
-    <div class="name-section
+    <div class="name-section">
+        <label for="username"><strong>Tvé jméno pro zápis do síně:</strong></label>
+        <input type="text" id="username" placeholder="Napiš svou přezdívku..." maxlength="20">
+    </div>
+
+    <form id="quiz-form">
+        {% for question in questions %}
+        <div class="question-card" data-ans="{{ question.ans }}" data-id="{{ question.id }}">
+            <h3>{{ loop.index }}. {{ question.q }}</h3>
+            <div class="options">
+                {% for opt in question.opts %}
+                <label><input type="radio" name="q{{ question.id }}" value="{{ loop.index0 }}" required> {{ opt }}</label>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn">🚀 Vyhodnotit a uložit výsledek</button>
+    </form>
+
+    <div id="result">
+        <h2 id="score-text"></h2>
+        
+        <div class="ai-bubble">
+            <div style="font-size: 2.5em; margin-bottom: 10px;">👨‍🔬</div>
+            <div style="font-weight: bold; color: #27ae60;">AI Zoolog říká:</div>
+            <div id="ai-comment">💬 Přemýšlím...</div>
+        </div>
+
+        <button onclick="location.reload()" class="btn" style="margin-top: 30px; background: #34495e;">Hrát znovu</button>
+    </div>
+
+    <script>
+        document.getElementById('quiz-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim() || "Anonym";
+            let score = 0;
+            const cards = document.querySelectorAll('.question-card');
+            
+            cards.forEach(card => {
+                if (card.querySelector('input:checked')?.value === card.getAttribute('data-ans')) score++;
+            });
+
+            document.getElementById('quiz-form').style.display = 'none';
+            document.querySelector('.name-section').style.display = 'none';
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('score-text').innerText = `Skóre: ${score} z 10`;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            await fetch('/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user: username, score: score })
+            });
+
+            const aiRes = await fetch('/ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ score: score, user: username })
+            });
+            const aiData = await aiRes.json();
+            document.getElementById('ai-comment').innerText = aiData.ai_comment;
+        };
+    </script>
+</body>
+</html>
