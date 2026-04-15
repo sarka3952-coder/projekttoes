@@ -4,7 +4,6 @@ import random
 import requests
 import urllib3
 import redis
-import json
 from flask import Flask, request, jsonify, render_template
 
 # --- 1. ZÁKLADNÍ NASTAVENÍ ---
@@ -16,14 +15,13 @@ app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123")
 # --- 2. PROMĚNNÉ PROSTŘEDÍ A REDIS ---
 api_key = os.environ.get("OPENAI_API_KEY")
 base_url = os.environ.get("OPENAI_BASE_URL", "https://kurim.ithope.eu/v1")
-redis_host = os.environ.get("REDIS_HOST", "cache") # Standardně v Kuřimi "cache"
+redis_host = os.environ.get("REDIS_HOST", "cache")
 
-# Připojení k Redisu
 try:
     r = redis.Redis(host=redis_host, port=6379, decode_responses=True)
     r.ping()
 except:
-    r = None # Pojistka, kdyby Redis neběžel
+    r = None
 
 # --- 3. DATA KVÍZU ---
 ALL_QUESTIONS = [
@@ -47,52 +45,6 @@ ALL_QUESTIONS = [
 def index():
     try:
         random_questions = random.sample(ALL_QUESTIONS, 10)
-        # Načtení síně slávy (Top 10)
         hall_of_fame = []
         if r:
-            # Získání skóre z Redis Sorted Setu
-            data = r.zrevrange("leaderboard", 0, 9, withscores=True)
-            hall_of_fame = [{"name": name, "score": int(score)} for name, score in data]
-        
-        return render_template('index.html', questions=random_questions, leaderboard=hall_of_fame)
-    except Exception as e:
-        return f"Chyba: {str(e)}", 500
-
-@app.route('/submit', methods=['POST'])
-def submit_score():
-    data = request.json or {}
-    user = data.get("user", "Anonym").strip() or "Anonym"
-    score = int(data.get("score", 0))
-    
-    if r:
-        # Uložíme do leaderboardu (přepíše skóre, pokud uživatel existuje a má vyšší)
-        r.zadd("leaderboard", {user: score})
-        # Logování přístupu (tvůj styl)
-        r.lpush("log_pristupu", f"{user} dokoncil kviz se skore {score} - {datetime.datetime.now()}")
-    
-    return jsonify({"status": "success"})
-
-@app.route('/ai', methods=['POST'])
-def ai_comment():
-    data = request.json or {}
-    score = data.get("score", 0)
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    payload = {
-        "model": "gemma3:27b", 
-        "messages": [
-            {"role": "system", "content": "Jsi vtipný zoolog."},
-            {"role": "user", "content": f"Hráč získal {score}/10 v kvízu o zvířatech. Napiš mu krátkou vtipnou větu v češtině."}
-        ], 
-        "stream": False
-    }
-    try:
-        clean_url = f"{base_url.rstrip('/')}/chat/completions"
-        res = requests.post(clean_url, headers=headers, json=payload, timeout=10, verify=False)
-        msg = res.json()['choices'][0]['message']['content'] if res.status_code == 200 else "Zoolog spí."
-        return jsonify({"ai_comment": msg})
-    except:
-        return jsonify({"ai_comment": "Zoolog utekl."})
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+            data = r.zrev
