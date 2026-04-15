@@ -2,168 +2,89 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <title>Expert Zoo Kvíz - skola.test</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zvířecí Kvíz</title>
     <style>
-        body { background-color: #f0f2f5; }
-        .quiz-scroll { max-height: 600px; overflow-y: auto; padding: 20px; background: white; border-radius: 10px; border: 1px solid #ddd; }
-        .question { margin-bottom: 25px; padding: 15px; border-left: 5px solid #198754; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .opt { margin: 8px 0; display: block; cursor: pointer; }
-        
-        /* Styl pro černé AI okno */
-        #ai-container { background-color: #1a1a1a; color: #33ff33; font-family: 'Courier New', monospace; padding: 20px; border-radius: 8px; border: 2px solid #333; }
-        #ai-terminal { min-height: 100px; white-space: pre-wrap; }
-        .cursor { display: inline-block; width: 10px; height: 18px; background: #33ff33; animation: blink 1s infinite; }
-        @keyframes blink { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; line-height: 1.6; background-color: #f4f4f9; }
+        .question-card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .options { margin-top: 10px; }
+        .btn { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .btn:hover { background: #45a049; }
+        #result { margin-top: 20px; padding: 15px; border-radius: 8px; display: none; background: #e7f3fe; border: 1px solid #b6d4fe; }
+        #ai-comment { font-style: italic; color: #555; margin-top: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="container py-5">
-        <h1 class="text-center mb-4">🐘 Zoologický expertní kvíz</h1>
 
-        <div class="row">
-            <div class="col-lg-7">
-                <div class="card shadow p-4">
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Jméno soutěžícího:</label>
-                        <input type="text" id="username" class="form-control" placeholder="Tvůj nick">
-                    </div>
-                    
-                    <div class="quiz-scroll" id="quiz-box">
-                        <div class="question">
-                            <p><strong>1. Kolik srdcí má chobotnice?</strong></p>
-                            <label class="opt"><input type="radio" name="q1" value="0"> Jedno</label>
-                            <label class="opt"><input type="radio" name="q1" value="0"> Dvě</label>
-                            <label class="opt"><input type="radio" name="q1" value="1"> Tři</label>
-                            <label class="opt"><input type="radio" name="q1" value="0"> Čtyři</label>
-                        </div>
-                        <div class="question">
-                            <p><strong>2. Který savec má nejhustší srst na světě?</strong></p>
-                            <label class="opt"><input type="radio" name="q2" value="0"> Lední medvěd</label>
-                            <label class="opt"><input type="radio" name="q2" value="1"> Vydra mořská</label>
-                            <label class="opt"><input type="radio" name="q2" value="0"> Činčila</label>
-                            <label class="opt"><input type="radio" name="q2" value="0"> Bobr</label>
-                        </div>
-                        <div class="question">
-                            <p><strong>3. Jak se nazývá věda studující ptáky?</strong></p>
-                            <label class="opt"><input type="radio" name="q3" value="0"> Entomologie</label>
-                            <label class="opt"><input type="radio" name="q3" value="1"> Ornitologie</label>
-                            <label class="opt"><input type="radio" name="q3" value="0"> Ichtyologie</label>
-                            <label class="opt"><input type="radio" name="q3" value="0"> Herpetologie</label>
-                        </div>
-                        <div class="question">
-                            <p><strong>4. Které zvíře má nejvyšší krevní tlak?</strong></p>
-                            <label class="opt"><input type="radio" name="q4" value="1"> Žirafa</label>
-                            <label class="opt"><input type="radio" name="q4" value="0"> Modrá velryba</label>
-                            <label class="opt"><input type="radio" name="q4" value="0"> Slon africký</label>
-                            <label class="opt"><input type="radio" name="q4" value="0"> Gepard</label>
-                        </div>
-                        <div class="question">
-                            <p><strong>5. Který pták dokáže létat pozpátku?</strong></p>
-                            <label class="opt"><input type="radio" name="q5" value="0"> Rorýs</label>
-                            <label class="opt"><input type="radio" name="q5" value="0"> Albatros</label>
-                            <label class="opt"><input type="radio" name="q5" value="1"> Kolibřík</label>
-                            <label class="opt"><input type="radio" name="q5" value="0"> Sokol</label>
-                        </div>
-                        <div class="question">
-                            <p><strong>6. Jakou barvu má kůže ledního medvěda?</strong></p>
-                            <label class="opt"><input type="radio" name="q6" value="0"> Bílou</label>
-                            <label class="opt"><input type="radio" name="q6" value="0"> Růžovou</label>
-                            <label class="opt"><input type="radio" name="q6" value="1"> Černou</label>
-                            <label class="opt"><input type="radio" name="q6" value="0"> Průhlednou</label>
-                        </div>
-                        <div class="question">
-                            <p><strong>7. Kolik žaludečních oddílů má kráva?</strong></p>
-                            <label class="opt"><input type="radio" name="q7" value="0"> 1</label>
-                            <label class="opt"><input type="radio" name="q7" value="0"> 2</label>
-                            <label class="opt"><input type="radio" name="q7" value="0"> 3</label>
-                            <label class="opt"><input type="radio" name="q7" value="1"> 4</label>
-                        </div>
-                        <div class="question">
-                            <p><strong>8. Který mořský tvor je nejrychlejší?</strong></p>
-                            <label class="opt"><input type="radio" name="q8" value="1"> Plachetník</label>
-                            <label class="opt"><input type="radio" name="q8" value="0"> Žralok bílý</label>
-                            <label class="opt"><input type="radio" name="q8" value="0"> Kosatka</label>
-                            <label class="opt"><input type="radio" name="q8" value="0"> Delfín</label>
-                        </div>
-                        <div class="question">
-                            <p><strong>9. Jak dlouho trvá březost slona afrického?</strong></p>
-                            <label class="opt"><input type="radio" name="q9" value="0"> 12 měsíců</label>
-                            <label class="opt"><input type="radio" name="q9" value="0"> 18 měsíců</label>
-                            <label class="opt"><input type="radio" name="q9" value="1"> 22 měsíců</label>
-                            <label class="opt"><input type="radio" name="q9" value="0"> 24 měsíců</label>
-                        </div>
-                        <div class="question">
-                            <p><strong>10. Který had má nejsilnější jed na světě?</strong></p>
-                            <label class="opt"><input type="radio" name="q10" value="0"> Kobra královská</label>
-                            <label class="opt"><input type="radio" name="q10" value="0"> Mamba černá</label>
-                            <label class="opt"><input type="radio" name="q10" value="1"> Taipan vnitrozemský</label>
-                            <label class="opt"><input type="radio" name="q10" value="0"> Chřestýš</label>
-                        </div>
-                    </div>
+    <h1>🐾 Velký zvířecí kvíz</h1>
+    <p>Otestuj své znalosti o přírodě!</p>
 
-                    <button onclick="calculateAndSend()" class="btn btn-success mt-4 btn-lg w-100 fw-bold">ODESLAT VÝSLEDKY</button>
-                </div>
-            </div>
-
-            <div class="col-lg-5">
-                <div class="card shadow p-4 mb-4">
-                    <h4>🏆 Síň slávy</h4>
-                    <table class="table table-hover mt-2">
-                        <thead><tr><th>#</th><th>Jméno</th><th>Body</th></tr></thead>
-                        <tbody id="leaderboard-body"></tbody>
-                    </table>
-                </div>
-
-                <div id="ai-container" class="shadow">
-                    <div style="border-bottom: 1px solid #333; margin-bottom: 10px; padding-bottom: 5px; font-size: 0.8rem; color: #888;">
-                        AI_JUDGE_SYSTEM [Ollama Llama 3.2]
-                    </div>
-                    <div id="ai-terminal">> Čekám na vstupní data uživatele...<span class="cursor"></span></div>
-                </div>
+    <form id="quiz-form">
+        {% for question in questions %}
+        <div class="question-card" data-id="{{ question.id }}" data-ans="{{ question.ans }}">
+            <h3>{{ loop.index }}. {{ question.q }}</h3>
+            <div class="options">
+                {% for opt in question.opts %}
+                <label style="display: block; margin-bottom: 5px;">
+                    <input type="radio" name="q{{ question.id }}" value="{{ loop.index0 }}" required>
+                    {{ opt }}
+                </label>
+                {% endfor %}
             </div>
         </div>
+        {% endfor %}
+
+        <button type="submit" class="btn">Vyhodnotit kvíz</button>
+    </form>
+
+    <div id="result">
+        <h2 id="score-text"></h2>
+        <div id="ai-comment">AI zoolog přemýšlí...</div>
+        <button onclick="location.reload()" class="btn" style="margin-top: 15px; background: #6c757d;">Zkusit znovu</button>
     </div>
 
     <script>
-        async function calculateAndSend() {
-            const user = document.getElementById('username').value || "Anonym";
+        document.getElementById('quiz-form').onsubmit = async (e) => {
+            e.preventDefault();
+            
             let score = 0;
+            const questions = document.querySelectorAll('.question-card');
             
-            // Projít všech 10 otázek
-            for(let i=1; i<=10; i++) {
-                if(document.querySelector(`input[name="q${i}"]:checked`)?.value === "1") score++;
-            }
-
-            // 1. Odeslat na server (leaderboard)
-            const res = await fetch('/submit', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({user, score})
+            questions.forEach(q => {
+                const qId = q.getAttribute('data-id');
+                const correctAns = q.getAttribute('data-ans');
+                const selected = document.querySelector(`input[name="q${qId}"]:checked`);
+                
+                if (selected && selected.value === correctAns) {
+                    score++;
+                }
             });
-            const board = await res.json();
-            
-            // Aktualizace tabulky
-            document.getElementById('leaderboard-body').innerHTML = board.map((item, index) => 
-                `<tr><td>${index+1}</td><td>${item.user}</td><td>${item.score}/10</td></tr>`
-            ).join('');
 
-            // 2. AI Terminál efekt
-            const terminal = document.getElementById('ai-terminal');
-            terminal.innerHTML = `> Data přijata: ${user}\n> Skóre: ${score}/10\n> Kontaktuji LLM server...\n<span class="cursor"></span>`;
+            // Zobrazení výsledku
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('score-text').innerText = `Tvé skóre: ${score} z ${questions.length}`;
+            window.scrollTo(0, document.body.scrollHeight);
 
+            // Volání AI (přesně na tvou route /ai)
             try {
-                const aiRes = await fetch('/ai', {
+                const response = await fetch('/ai', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({score})
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ score: score })
                 });
-                const aiData = await aiRes.json();
-                terminal.innerHTML = `> Hodnocení experta:\n\n"${aiData.ai_comment}"\n<span class="cursor"></span>`;
-            } catch (e) {
-                terminal.innerHTML = `> CHYBA: LLM server neodpovídá.\n<span class="cursor"></span>`;
+                const data = await response.json();
+                document.getElementById('ai-comment').innerText = data.ai_comment || data.error;
+            } catch (err) {
+                document.getElementById('ai-comment').innerText = "AI zoolog se někde zatoulal v lese.";
             }
-        }
+
+            // Odeslání výsledku na /submit (pro tvé logy)
+            fetch('/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user: "Hráč", score: score })
+            });
+        };
     </script>
 </body>
 </html>
