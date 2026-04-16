@@ -5,13 +5,13 @@ import requests
 import urllib3
 from flask import Flask, request, jsonify, render_template
 
-# --- 1. ZÁKLADNÍ NASTAVENÍ ---
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123")
 
-# --- 2. VOLITELNÝ REDIS (S POJISTKOU) ---
+
 # Pokusíme se importovat redis. Pokud v systému není, aplikace nespadne.
 try:
     import redis
@@ -23,7 +23,7 @@ except (ImportError, Exception):
     r = None
     print("Redis neni dostupny - jedeme v rezimu bez databaze.")
 
-# --- 3. DATA KVÍZU ---
+
 ALL_QUESTIONS = [
     {"id": 1, "q": "Kolik srdcí má chobotnice?", "opts": ["Jedno", "Dvě", "Tři", "Čtyři"], "ans": 2},
     {"id": 2, "q": "Který savec má nejhustší srst?", "opts": ["Lední medvěd", "Vydra mořská", "Činčila", "Bobr"], "ans": 1},
@@ -39,7 +39,6 @@ ALL_QUESTIONS = [
     {"id": 12, "q": "Které zvíře neumí skákat?", "opts": ["Slon", "Hroch", "Nosorožec", "Všechna uvedená"], "ans": 0}
 ]
 
-# --- 4. ROUTY ---
 
 @app.route('/')
 def index():
