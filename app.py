@@ -12,7 +12,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET", "tajny-klic-123")
 
 
-# Pokusíme se importovat redis. Pokud v systému není, aplikace nespadne.
+
 try:
     import redis
     redis_host = os.environ.get("REDIS_HOST", "cache")
